@@ -1,0 +1,41 @@
+---
+
+- hosts: api
+  tasks:
+    - name: Add packstack repo
+      yum:
+        name='centos-release-openstack-newton'
+        state=latest
+
+    - name: Install packstack
+      yum:
+        name='openstack-packstack'
+        state=latest
+
+    - name: Copy packstack config
+      copy:
+        src: ../conf/newton-answer.txt
+        dest: /root/newton-answer.txt
+
+    - name: Generate SSH keys
+      shell: ssh-keygen -b 2048 -t rsa -f /root/.ssh/id_rsa -q -N ""
+      args:
+        creates: /root/.ssh/id_rsa
+
+    - name: Copy packstack SSH key from api
+      fetch:
+        src: /root/.ssh/id_rsa.pub
+        dest: ../
+
+- hosts: cmp, net, api
+  tasks:
+    - name: Add authorized ssh key 
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', '../api/root/.ssh/id_rsa.pub') }}"
+
+- hosts: api
+  tasks:
+    - name: Setup packstack
+      shell: packstack --gen-answer-file=/root/newton-answer.txt

@@ -1,0 +1,72 @@
+---
+
+- name: Copy hosts file to bostion host
+  hosts: api
+  tasks:
+    - name: Copy hosts
+      copy:
+          src: ../conf/hosts
+          dest: /etc/hosts
+
+- name: Update all server to last CentOS release
+  hosts: all
+  tasks:
+    - name: Copy hosts
+      copy:
+          src: ../conf/hosts
+          dest: /etc/hosts
+
+    - name: Copy latest reposytory config 
+      copy:
+        src: ../conf/CentOS-Base.repo
+        dest: /etc/yum.repos.d/CentOS-Base.repo
+
+    # update all packages
+    - name: upgrade all packages
+      yum:
+        name='*'
+        state=latest
+
+    - name: Stopped and disable NetworkManager
+      service:
+        name=NetworkManager
+        state=stopped
+        enabled=false
+      ignore_errors: yes
+
+- name: Reboot cmp and net servers after update
+  hosts: cmp, net
+  tasks:
+    - name: Reboot server
+      # Use sleep command for exti without error
+      shell: nohup bash -c "sleep 2s && reboot" &
+      register: reboot
+
+    - name: Waiting server
+      # Now we will run a local 'ansible -m ping' on this host until it returns.
+      # This works with the existing ansible hosts inventory and so any custom ansible_ssh_hosts definitions are being used
+      local_action: shell ansible -u {{ ansible_user_id }} -m ping {{ inventory_hostname }}
+      register: result
+      until: result.rc == 0
+      retries: 30
+      delay: 10
+      when: reboot.changed
+
+- name: Reboot api server after update
+  hosts: api
+  tasks:
+    - name: Reboot server
+      # Use sleep command for exti without error
+      shell: nohup bash -c "sleep 2s && reboot" &
+      register: reboot
+
+    - name: Waiting server
+      local_action: shell ansible -u {{ ansible_user_id }} -m ping {{ inventory_hostname }}
+      register: result
+      until: result.rc == 0
+      retries: 30
+      delay: 10
+      when: reboot.changed
+
+    - name:
+      shell: uptime

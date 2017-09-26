@@ -1,0 +1,24 @@
+Host *
+    UserKnownHostsFile /dev/null
+    StrictHostKeyChecking no
+    KbdInteractiveAuthentication no
+    PreferredAuthentications gssapi-with-mic,gssapi-keyex,hostbased,publickey
+    PasswordAuthentication no
+    IdentityFile $ssh_key
+
+Host api
+    Port 22
+    HostName $bostion_ip
+    User root
+
+Host cmp
+    HostName %h
+    Port 22
+    User root
+    ProxyCommand ssh -l root -W %h:%p -F ssh_config $bostion_ip
+
+Host net
+    HostName %h
+    Port 22
+    User root
+    ProxyCommand ssh -l root -W %h:%p -F ssh_config $bostion_ip
